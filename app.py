@@ -1,109 +1,80 @@
-import yfinance as yf
 import streamlit as st
+import yfinance as yf
 import pandas as pd
-import plotly.graph_objects as go
-import time
+from datetime import datetime
 
 st.set_page_config(layout="wide")
 
-st.title("📈 Smart Stock App LIVE 🔴")
+st.title("📈 Smart Stock App PRO")
 
-# ===== AUTO REFRESH =====
-refresh_rate = st.sidebar.slider("Refresh Time (sec)", 2, 30, 5)
+stock = st.text_input("Enter Stock (Example: TATAMOTORS.NS)")
 
-# ===== STOCK SELECT =====
-stocks = {
-    "TCS": "TCS.NS",
-    "Reliance": "RELIANCE.NS",
-    "Infosys": "INFY.NS",
-    "HDFC Bank": "HDFCBANK.NS",
-    "Apple": "AAPL",
-    "Tesla": "TSLA"
-}
+if stock:
+    ticker = yf.Ticker(stock)
+    info = ticker.info
+    data = ticker.history(period="1y")
 
-stock_name = st.selectbox("Select Stock", list(stocks.keys()))
-ticker = stocks[stock_name]
+    if not data.empty:
 
-# ===== DATA =====
-data = yf.download(ticker, period="1d", interval="1m")
+        # =========================
+        # 🔥 TOP SECTION (PRICE)
+        # =========================
+        price = info.get("currentPrice", 0)
+        prev_close = info.get("previousClose", 0)
 
-if data.empty:
-    st.error("No data found!")
-    st.stop()
+        change = price - prev_close
+        percent = (change / prev_close) * 100 if prev_close != 0 else 0
 
-data.columns = [col[0] if isinstance(col, tuple) else col for col in data.columns]
+        col1, col2 = st.columns([2,1])
 
-# ===== LIVE PRICE =====
-latest_price = data['Close'].iloc[-1]
-st.metric("💰 Live Price", f"₹ {round(latest_price,2)}")
+        with col1:
+            st.subheader(f"{stock}")
+            st.markdown(f"### ₹ {price} ({round(change,2)} / {round(percent,2)}%)")
 
-# ===== MOVING AVERAGES =====
-ma20 = data['Close'].rolling(20).mean()
-ma50 = data['Close'].rolling(50).mean()
+        with col2:
+            st.write("🕒 Time:", datetime.now().strftime("%H:%M:%S"))
+            st.write("🏢 Exchange:", info.get("exchange", "N/A"))
 
-# ===== CHART =====
-st.subheader("📊 Live Chart")
+        st.divider()
 
-fig = go.Figure()
+        # =========================
+        # 📊 CHART SECTION
+        # =========================
+        st.subheader("📊 Price Chart")
+        st.line_chart(data["Close"])
 
-# Candlestick
-fig.add_trace(go.Candlestick(
-    x=data.index,
-    open=data['Open'],
-    high=data['High'],
-    low=data['Low'],
-    close=data['Close'],
-    name="Price"
-))
+        st.divider()
 
-# MA
-fig.add_trace(go.Scatter(x=data.index, y=ma20, line=dict(width=2), name="MA20"))
-fig.add_trace(go.Scatter(x=data.index, y=ma50, line=dict(width=2), name="MA50"))
+        # =========================
+        # 📈 DETAILS SECTION
+        # =========================
+        col1, col2, col3 = st.columns(3)
 
-# Volume
-fig.add_trace(go.Bar(
-    x=data.index,
-    y=data['Volume'],
-    name="Volume",
-    yaxis="y2",
-    opacity=0.3
-))
+        # Previous Close
+        col1.metric("Previous Close", prev_close)
 
-fig.update_layout(
-    template="plotly_dark",
-    yaxis2=dict(overlaying='y', side='right')
-)
+        # Day Range
+        day_low = info.get("dayLow", 0)
+        day_high = info.get("dayHigh", 0)
+        col2.metric("Day Range", f"{day_low} - {day_high}")
 
-st.plotly_chart(fig, use_container_width=True)
+        # Year Range
+        year_low = info.get("fiftyTwoWeekLow", 0)
+        year_high = info.get("fiftyTwoWeekHigh", 0)
+        col3.metric("52 Week Range", f"{year_low} - {year_high}")
 
-st.markdown("---")
+        st.divider()
 
-# ===== RSI =====
-st.subheader("📉 RSI")
+        # =========================
+        # 💼 EXTRA INFO
+        # =========================
+        col1, col2, col3 = st.columns(3)
 
-delta = data['Close'].diff()
-gain = delta.clip(lower=0)
-loss = -delta.clip(upper=0)
+        col1.metric("Market Cap", info.get("marketCap", "N/A"))
+        col2.metric("Avg Volume", info.get("averageVolume", "N/A"))
+        col3.metric("P/E Ratio", info.get("trailingPE", "N/A"))
 
-avg_gain = gain.rolling(14).mean()
-avg_loss = loss.rolling(14).mean()
-avg_loss[avg_loss == 0] = 0.0001
+        col1.metric("Dividend Yield", info.get("dividendYield", "N/A"))
 
-rs = avg_gain / avg_loss
-rsi = 100 - (100 / (1 + rs))
-
-st.line_chart(rsi)
-
-# ===== SIGNAL =====
-st.subheader("🚀 Signal")
-
-if rsi.iloc[-1] > 70:
-    st.error("SELL 🔴")
-elif rsi.iloc[-1] < 30:
-    st.success("BUY 🟢")
-else:
-    st.warning("HOLD ⚖️")
-
-# ===== AUTO REFRESH LOOP =====
-time.sleep(refresh_rate)
-st.rerun()
+    else:
+        st.error("Invalid Stock or No Data Found")
