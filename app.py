@@ -14,7 +14,7 @@ if stock:
     tab1, tab2 = st.tabs(["Analysis", "Research"])
 
     # =========================
-    # TAB 1 (YOUR DESIGN)
+    # TAB 1 (Analysis)
     # =========================
     with tab1:
 
@@ -30,7 +30,7 @@ if stock:
             data["MA20"] = data["Close"].rolling(20).mean()
             data["MA50"] = data["Close"].rolling(50).mean()
 
-            # Price Chart
+            # Chart
             st.subheader("Price Chart")
 
             fig = go.Figure()
@@ -51,35 +51,47 @@ if stock:
             st.subheader("RSI")
             st.line_chart(rsi)
 
-            # Signal
-            last_rsi = rsi.iloc[-1]
+            # ✅ FIXED RSI VALUE
+            rsi_clean = rsi.dropna()
 
-            st.subheader("Signal")
+            if not rsi_clean.empty:
+                last_rsi = float(rsi_clean.iloc[-1])
 
-            if last_rsi < 30:
-                st.success("BUY Signal")
-            elif last_rsi > 70:
-                st.error("SELL Signal")
+                st.subheader("Signal")
+
+                if last_rsi < 30:
+                    st.success("BUY Signal")
+                elif last_rsi > 70:
+                    st.error("SELL Signal")
+                else:
+                    st.warning("HOLD")
             else:
-                st.warning("HOLD")
+                st.warning("RSI not available")
 
         else:
             st.error("No Data Found")
 
     # =========================
-    # TAB 2 (ADVANCED RESEARCH)
+    # TAB 2 (Research)
     # =========================
     with tab2:
 
         ticker = yf.Ticker(stock)
         info = ticker.info
 
-        # 1. ABOUT
         st.subheader("About Company")
         st.write(info.get("longBusinessSummary", "No Data"))
 
-        # 2. COMPARE
+        st.subheader("Fundamentals")
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Market Cap", info.get("marketCap", "N/A"))
+        col2.metric("P/E Ratio", info.get("trailingPE", "N/A"))
+        col3.metric("Dividend Yield", info.get("dividendYield", "N/A"))
+
         st.subheader("Compare")
+
         comp = st.text_input("Compare with (Example: INFY.NS)")
 
         if comp:
@@ -92,25 +104,16 @@ if stock:
 
             st.plotly_chart(fig, use_container_width=True)
 
-        # 3. NEWS
         st.subheader("News")
+
         try:
             news = ticker.news
             for n in news[:5]:
                 st.write(n["title"])
                 st.write("---")
         except:
-            st.write("No News")
+            st.write("No News Available")
 
-        # 4. MARKET (basic view)
-        st.subheader("Market Overview")
-
-        st.write("US Market: S&P 500, NASDAQ")
-        st.write("India: NIFTY 50, SENSEX")
-        st.write("Crypto: BTC, ETH")
-        st.write("Currencies: USD/INR")
-
-        # 5. INCOME STATEMENT
         st.subheader("Income Statement")
 
         try:
@@ -118,10 +121,9 @@ if stock:
         except:
             st.write("No Data")
 
-        # 6. FINAL ANALYSIS
         st.subheader("Final Analysis")
 
         import random
         prediction = random.randint(60, 90)
 
-        st.write(f"App Prediction Confidence: {prediction}%")
+        st.write(f"Prediction Confidence: {prediction}%")
