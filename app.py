@@ -7,14 +7,26 @@ st.set_page_config(layout="wide")
 
 st.title("Smart Stock App PRO+")
 
-stock = st.text_input("Enter Stock (Example: TCS.NS)")
+# =========================
+# STOCK INPUT
+# =========================
+st.subheader("Search Stock")
 
+stock = st.text_input("Enter Stock (Example: TCS.NS, AAPL, SAP.DE)")
+
+st.write("India: TCS.NS, INFY.NS")
+st.write("US: AAPL, TSLA")
+st.write("Europe: SAP.DE, BMW.DE")
+
+# =========================
+# MAIN APP
+# =========================
 if stock:
 
     tab1, tab2 = st.tabs(["Analysis", "Research"])
 
     # =========================
-    # TAB 1 (Analysis)
+    # TAB 1
     # =========================
     with tab1:
 
@@ -41,38 +53,53 @@ if stock:
 
             st.plotly_chart(fig, use_container_width=True)
 
-            # RSI
+            # ================= RSI =================
             delta = data['Close'].diff()
-            gain = (delta.where(delta > 0, 0)).rolling(14).mean()
-            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
-            rs = gain / loss
+
+            gain = delta.copy()
+            loss = delta.copy()
+
+            gain[gain < 0] = 0
+            loss[loss > 0] = 0
+
+            avg_gain = gain.rolling(14).mean()
+            avg_loss = abs(loss.rolling(14).mean())
+
+            rs = avg_gain / avg_loss
             rsi = 100 - (100 / (1 + rs))
 
             st.subheader("RSI")
             st.line_chart(rsi)
 
-            # ✅ FIXED RSI VALUE
+            # ================= SIGNAL =================
             rsi_clean = rsi.dropna()
 
-            if not rsi_clean.empty:
-                last_rsi = float(rsi_clean.iloc[-1])
+            st.subheader("Signal")
 
-                st.subheader("Signal")
+            if len(rsi_clean) > 0:
 
-                if last_rsi < 30:
-                    st.success("BUY Signal")
-                elif last_rsi > 70:
-                    st.error("SELL Signal")
+                last_rsi = rsi_clean.values[-1]
+
+                if pd.notna(last_rsi):
+
+                    if last_rsi < 30:
+                        st.success("BUY Signal")
+                    elif last_rsi > 70:
+                        st.error("SELL Signal")
+                    else:
+                        st.warning("HOLD")
+
                 else:
-                    st.warning("HOLD")
+                    st.warning("RSI not valid")
+
             else:
-                st.warning("RSI not available")
+                st.warning("Not enough data")
 
         else:
-            st.error("No Data Found")
+            st.error("Stock not found or invalid symbol")
 
     # =========================
-    # TAB 2 (Research)
+    # TAB 2
     # =========================
     with tab2:
 
@@ -90,9 +117,10 @@ if stock:
         col2.metric("P/E Ratio", info.get("trailingPE", "N/A"))
         col3.metric("Dividend Yield", info.get("dividendYield", "N/A"))
 
+        # ================= COMPARE =================
         st.subheader("Compare")
 
-        comp = st.text_input("Compare with (Example: INFY.NS)")
+        comp = st.text_input("Compare with (Example: AAPL or INFY.NS)")
 
         if comp:
             data1 = yf.download(stock, period="6mo")
@@ -104,6 +132,7 @@ if stock:
 
             st.plotly_chart(fig, use_container_width=True)
 
+        # ================= NEWS =================
         st.subheader("News")
 
         try:
@@ -114,6 +143,7 @@ if stock:
         except:
             st.write("No News Available")
 
+        # ================= INCOME =================
         st.subheader("Income Statement")
 
         try:
@@ -121,6 +151,7 @@ if stock:
         except:
             st.write("No Data")
 
+        # ================= FINAL ANALYSIS =================
         st.subheader("Final Analysis")
 
         import random
