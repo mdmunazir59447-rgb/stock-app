@@ -19,6 +19,13 @@ st.write("US: AAPL, TSLA")
 st.write("Europe: SAP.DE, BMW.DE")
 
 # =========================
+# CACHE (RATE LIMIT FIX)
+# =========================
+@st.cache_data
+def load_data(stock):
+    return yf.download(stock, period="6mo")
+
+# =========================
 # MAIN APP
 # =========================
 if stock:
@@ -26,13 +33,13 @@ if stock:
     tab1, tab2 = st.tabs(["Analysis", "Research"])
 
     # =========================
-    # TAB 1
+    # TAB 1 (Analysis)
     # =========================
     with tab1:
 
         st.subheader("Stock Data")
 
-        data = yf.download(stock, period="6mo")
+        data = load_data(stock)
 
         if not data.empty:
 
@@ -53,7 +60,7 @@ if stock:
 
             st.plotly_chart(fig, use_container_width=True)
 
-            # ================= RSI =================
+            # RSI
             delta = data['Close'].diff()
 
             gain = delta.copy()
@@ -71,7 +78,7 @@ if stock:
             st.subheader("RSI")
             st.line_chart(rsi)
 
-            # ================= SIGNAL =================
+            # SIGNAL (SAFE)
             rsi_clean = rsi.dropna()
 
             st.subheader("Signal")
@@ -96,15 +103,21 @@ if stock:
                 st.warning("Not enough data")
 
         else:
-            st.error("Stock not found or invalid symbol")
+            st.error("Stock not found")
 
     # =========================
-    # TAB 2
+    # TAB 2 (Research)
     # =========================
     with tab2:
 
         ticker = yf.Ticker(stock)
-        info = ticker.info
+
+        # RATE LIMIT SAFE
+        try:
+            info = ticker.info
+        except:
+            info = {}
+            st.warning("Too many requests. Try again later.")
 
         st.subheader("About Company")
         st.write(info.get("longBusinessSummary", "No Data"))
@@ -117,22 +130,23 @@ if stock:
         col2.metric("P/E Ratio", info.get("trailingPE", "N/A"))
         col3.metric("Dividend Yield", info.get("dividendYield", "N/A"))
 
-        # ================= COMPARE =================
+        # COMPARE
         st.subheader("Compare")
 
         comp = st.text_input("Compare with (Example: AAPL or INFY.NS)")
 
         if comp:
-            data1 = yf.download(stock, period="6mo")
-            data2 = yf.download(comp, period="6mo")
+            data1 = load_data(stock)
+            data2 = load_data(comp)
 
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=data1.index, y=data1["Close"], name=stock))
-            fig.add_trace(go.Scatter(x=data2.index, y=data2["Close"], name=comp))
+            if not data1.empty and not data2.empty:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=data1.index, y=data1["Close"], name=stock))
+                fig.add_trace(go.Scatter(x=data2.index, y=data2["Close"], name=comp))
 
-            st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True)
 
-        # ================= NEWS =================
+        # NEWS
         st.subheader("News")
 
         try:
@@ -141,9 +155,9 @@ if stock:
                 st.write(n["title"])
                 st.write("---")
         except:
-            st.write("No News Available")
+            st.write("News not available")
 
-        # ================= INCOME =================
+        # INCOME
         st.subheader("Income Statement")
 
         try:
@@ -151,7 +165,7 @@ if stock:
         except:
             st.write("No Data")
 
-        # ================= FINAL ANALYSIS =================
+        # FINAL ANALYSIS
         st.subheader("Final Analysis")
 
         import random
