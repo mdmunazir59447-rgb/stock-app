@@ -14,7 +14,6 @@ header {visibility: hidden;}
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # 👇 fir baaki code
-st.title("Smart Stock App PRO+")
 import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
