@@ -1,4 +1,21 @@
 import streamlit as st
+
+st.set_page_config(layout="wide")
+
+# 👇 YAHAN PASTE KAR
+hide_st_style = """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
+.stDeployButton {display:none;}
+</style>
+"""
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# 👇 fir baaki code
+st.title("Smart Stock App PRO+")
+import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
 import pandas as pd
